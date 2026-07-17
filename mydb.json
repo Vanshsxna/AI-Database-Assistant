@@ -1,0 +1,16 @@
+{
+    "students": {
+        "columns": [
+            "id",
+            "name",
+            "marks"
+        ],
+        "rows": [
+            {
+                "id": 1,
+                "name": "Vansh",
+                "marks": 98
+            }
+        ]
+    }
+}
