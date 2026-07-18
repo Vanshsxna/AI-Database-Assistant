@@ -1,4 +1,4 @@
-from database import Database
+from core.database import Database
 
 db = Database("mydb.json")
 
@@ -54,9 +54,7 @@ DELETE students marks < 40
 EXIT
 """)
 
-    # -----------------------------
     # CREATE
-    # -----------------------------
 
     elif parts[0].upper() == "CREATE":
 
@@ -70,9 +68,7 @@ EXIT
 
         display_result(result)
 
-    # -----------------------------
     # INSERT
-    # -----------------------------
 
     elif parts[0].upper() == "INSERT":
 
@@ -94,9 +90,7 @@ EXIT
 
         display_result(result)
 
-    # -----------------------------
     # SELECT
-    # -----------------------------
 
     elif parts[0].upper() == "SELECT":
 
@@ -127,9 +121,7 @@ EXIT
 
         display_result(result)
 
-    # -----------------------------
     # UPDATE
-    # -----------------------------
 
     elif parts[0].upper() == "UPDATE":
 
@@ -162,9 +154,7 @@ EXIT
 
         display_result(result)
 
-    # -----------------------------
     # DELETE
-    # -----------------------------
 
     elif parts[0].upper() == "DELETE":
 
