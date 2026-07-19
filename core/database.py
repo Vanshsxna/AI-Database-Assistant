@@ -1,120 +1,421 @@
-"""
-core/database.py
-
-Core Database class for the Mini Database Engine.
-"""
-
-from pathlib import Path
-from typing import Any, Dict, List
-
 from .storage import Storage
-from .table import Table
-
+from .schema import Schema
+from .constraints import Constraints
+from .validator import Validator
+from copy import deepcopy
 
 class Database:
-    """
-    Main database manager.
-
-    Responsibilities:
-    - Load/save database
-    - Create/drop tables
-    - Return table objects
-    """
-
-    def __init__(self, db_file: str = "data/database.json") -> None:
-        self.db_file = Path(db_file)
-        self.storage = Storage(self.db_file)
-        self.tables: Dict[str, Table] = {}
-
+    def __init__(self, filename="data/mydb.json"):
+        self.filename = filename
+        self.tables = {}
         self._load()
 
-    def _load(self) -> None:
-        raw = self.storage.load()
+    def _load(self):
+        self.tables = Storage.load(self.filename)
 
-        self.tables = {}
+    def save(self):
+        Storage.save(
+            self.filename,
+            self.tables
+        )
 
-        for table_name, table_data in raw.items():
-            self.tables[table_name] = Table.from_dict(table_data)
+    def _result(
+        self,
+        success,
+        message,
+        data=None
+    ):
 
-    def save(self) -> None:
-        data = {
-            name: table.to_dict()
-            for name, table in self.tables.items()
+        return {
+            "success": success,
+            "message": message,
+            "data": data
         }
-        self.storage.save(data)
 
-    def create_table(self, name: str, columns: List[str]) -> None:
-        if name in self.tables:
-            raise ValueError(f"Table '{name}' already exists.")
+    def _get_table(self, table_name):
+        return self.tables.get(table_name)
 
-        self.tables[name] = Table(name=name, columns=columns)
-        self.save()
+    def table_exists(self, table_name):
+        return table_name in self.tables
 
-    def drop_table(self, name: str) -> None:
-        if name not in self.tables:
-            raise ValueError(f"Table '{name}' does not exist.")
-
-        del self.tables[name]
-        self.save()
-
-    def list_tables(self) -> List[str]:
+    def list_tables(self):
         return sorted(self.tables.keys())
 
-    def table_exists(self, name: str) -> bool:
-        return name in self.tables
+    def export(self):
+        return deepcopy(self.tables)
 
-    def get_table(self, name: str) -> Table:
-        if name not in self.tables:
-            raise ValueError(f"Table '{name}' does not exist.")
-        return self.tables[name]
+    def __contains__(self, table_name):
+        return table_name in self.tables
 
-    def insert(self, table: str, row: Dict[str, Any]) -> None:
-        self.get_table(table).insert(row)
+    def __len__(self):
+        return len(self.tables)
+
+    def __repr__(self):
+        return (
+            f"Database("
+            f"tables={len(self.tables)}, "
+            f"filename='{self.filename}')"
+        )
+
+    def create_table(self, table_name, columns):
+        if self.table_exists(table_name):
+            return self._result(
+                False,
+                f"Table '{table_name}' already exists."
+            )
+
+        success, schema = Schema.build(columns)
+
+        if not success:
+            return self._result(False, schema)
+
+        self.tables[table_name] = {
+            "schema": schema,
+            "rows": []
+        }
+
         self.save()
+
+        return self._result(
+            True,
+            f"Table '{table_name}' created successfully."
+        )
+
+    def drop_table(self, table_name):
+        table = self._get_table(table_name)
+
+        if table is None:
+            return self._result(
+                False,
+                f"Table '{table_name}' does not exist."
+            )
+
+        del self.tables[table_name]
+
+        self.save()
+
+        return self._result(
+            True,
+            f"Table '{table_name}' deleted successfully."
+        )
+
+    def insert(self, table_name, row):
+        table = self._get_table(table_name)
+        if table is None:
+            return self._result(
+                False,
+                f"Table '{table_name}' does not exist."
+            )
+
+        success, validated_row = Constraints.validate(
+            table,
+            row
+        )
+
+        if not success:
+            return self._result(
+                False,
+                validated_row
+            )
+
+        table["rows"].append(validated_row)
+
+        self.save()
+
+        return self._result(
+            True,
+            "Row inserted successfully.",
+            validated_row
+        )
+
+    def _evaluate_condition(self, row, where):
+        if where is None:
+            return True
+
+        if len(where) != 3:
+            return False
+
+        column, operator, value = where
+        if column not in row:
+            return False
+
+        current = row[column]
+
+        try:
+
+            if operator == "==":
+                return current == value
+
+            elif operator == "!=":
+                return current != value
+
+            elif operator == ">":
+                return current > value
+
+            elif operator == "<":
+                return current < value
+
+            elif operator == ">=":
+                return current >= value
+
+            elif operator == "<=":
+                return current <= value
+
+            else:
+                return False
+
+        except Exception:
+            return False
 
     def select(
         self,
-        table: str,
+        table_name,
         where=None,
         order_by=None,
-        reverse: bool = False,
-        limit: int | None = None,
+        reverse=False,
+        limit=None
     ):
-        return self.get_table(table).select(
-            where=where,
-            order_by=order_by,
-            reverse=reverse,
-            limit=limit,
+
+        table = self._get_table(table_name)
+        if table is None:
+
+            return self._result(
+                False,
+                f"Table '{table_name}' does not exist."
+            )
+
+        rows = table["rows"][:]
+
+        if where is not None:
+            rows = [
+                row
+                for row in rows
+                if self._evaluate_condition(
+                    row,
+                    where
+                )
+            ]
+
+        if order_by is not None:
+            if order_by not in table["schema"]:
+                return self._result(
+                    False,
+                    f"Unknown column '{order_by}'."
+                )
+
+            rows.sort(
+                key=lambda row: row[order_by],
+                reverse=reverse
+            )
+
+        if limit is not None:
+            rows = rows[:limit]
+        return self._result(
+            True,
+            "Query executed successfully.",
+            rows
         )
 
-    def update(self, table: str, values: Dict[str, Any], where=None) -> int:
-        count = self.get_table(table).update(values, where)
+    def count(
+        self,
+        table_name,
+        where=None
+    ):
+
+        result = self.select(
+            table_name,
+            where=where
+        )
+
+        if not result["success"]:
+            return result
+
+        return self._result(
+            True,
+            "Count successful.",
+            len(result["data"])
+        )
+
+    def update(
+        self,
+        table_name,
+        values,
+        where=None
+    ):
+
+        table = self._get_table(table_name)
+        if table is None:
+            return self._result(
+                False,
+                f"Table '{table_name}' does not exist."
+            )
+
+        schema = table["schema"]
+        rows = table["rows"]
+
+        for column in values:
+            if column not in schema:
+                return self._result(
+                    False,
+                    f"Unknown column '{column}'."
+                )
+
+        updated = 0
+
+        for row in rows:
+            if not self._evaluate_condition(row, where):
+                continue
+
+            new_row = row.copy()
+
+            for column, value in values.items():
+                success, converted = Validator.validate(
+                    value,
+                    schema[column]["type"]
+                )
+
+                if not success:
+                    return self._result(False, converted)
+
+                new_row[column] = converted
+
+            # UNIQUE / PRIMARY KEY check
+            for column, info in schema.items():
+
+                constraints = info["constraints"]
+
+                if constraints["primary_key"] or constraints["unique"]:
+
+                    new_value = new_row[column]
+
+                    # Nulls are never considered duplicates of each other.
+                    if new_value is None:
+                        continue
+
+                    for existing in rows:
+
+                        if existing is row:
+                            continue
+
+                        if existing[column] == new_value:
+
+                            return self._result(
+                                False,
+                                f"Duplicate value '{new_value}' in column '{column}'."
+                            )
+
+            row.update(new_row)
+
+            updated += 1
+
         self.save()
-        return count
 
-    def delete(self, table: str, where=None) -> int:
-        count = self.get_table(table).delete(where)
+        return self._result(
+            True,
+            f"{updated} row(s) updated.",
+            {
+                "updated": updated
+            }
+        )
+
+    def delete(
+        self,
+        table_name,
+        where=None
+    ):
+        table = self._get_table(table_name)
+        if table is None:
+            return self._result(
+                False,
+                f"Table '{table_name}' does not exist."
+            )
+
+        rows = table["rows"]
+        original = len(rows)
+        table["rows"] = [
+            row
+            for row in rows
+            if not self._evaluate_condition(
+                row,
+                where
+            )
+
+        ]
+        deleted = original - len(table["rows"])
         self.save()
-        return count
+        return self._result(
+            True,
+            f"{deleted} row(s) deleted.",
+            deleted
+        )
 
-    def count(self, table: str, where=None) -> int:
-        return self.get_table(table).count(where)
+    def truncate(
+        self,
+        table_name
+    ):
+        table = self._get_table(table_name)
+        if table is None:
+            return self._result(
+                False,
+                f"Table '{table_name}' does not exist."
+            )
+        deleted = len(table["rows"])
+        table["rows"] = []
+        self.save()
+        return self._result(
+            True,
+            f"{deleted} row(s) removed."
+        )
 
-    def truncate(self, table: str) -> None:
-        self.get_table(table).truncate()
+    def table_info(self, table_name):
+        table = self._get_table(table_name)
+
+        if table is None:
+            return self._result(
+                False,
+                f"Table '{table_name}' does not exist."
+            )
+
+        return self._result(
+            True,
+            "Schema fetched successfully.",
+            table["schema"]
+        )
+
+    def clear_database(self):
+        self.tables = {}
         self.save()
 
-    def export(self) -> Dict[str, Any]:
-        return {
-            name: table.to_dict()
-            for name, table in self.tables.items()
-        }
+        return self._result(
+            True,
+            "Database cleared successfully."
+        )
 
-    def __contains__(self, item: str) -> bool:
-        return item in self.tables
+    def rename_table(
+        self,
+        old_name,
+        new_name
+    ):
 
-    def __len__(self) -> int:
-        return len(self.tables)
+        if old_name not in self.tables:
 
-    def __repr__(self) -> str:
-        return f"Database(tables={self.list_tables()})"
+            return self._result(
+                False,
+                f"Table '{old_name}' does not exist."
+            )
+
+        if new_name in self.tables:
+
+            return self._result(
+                False,
+                f"Table '{new_name}' already exists."
+            )
+
+        self.tables[new_name] = self.tables.pop(old_name)
+
+        self.save()
+
+        return self._result(
+            True,
+            "Table renamed successfully."
+        )
