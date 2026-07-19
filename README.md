@@ -1,67 +1,118 @@
-# AI Database Assistant
+# Mini Database Engine
 
-A lightweight database engine built completely from scratch in Python without using SQL or any external database libraries.
+A modular JSON-based database engine built entirely in Python without using any external database libraries.
+
+This project implements a lightweight database system with support for table creation, CRUD operations, schema validation, constraints, and persistent JSON storage.
+
+---
 
 ## Features
 
-- Create tables
+- Create and drop tables
 - Insert records
 - Select records
+- Conditional queries (WHERE)
 - Update records
 - Delete records
-- Persistent JSON storage
-- Dictionary-based record storage
-- Object-Oriented Architecture
+- Count records
+- Table schema inspection
+- JSON-based persistent storage
+- Data type validation
+- Primary Key support
+- Unique constraint
+- Not Null constraint
+- Default values
+- Modular architecture
 
-## Tech Stack
+---
+
+## Project Structure
+
+```
+AI_database_assistant/
+│
+├── core/
+│   ├── database.py
+│   ├── storage.py
+│   ├── schema.py
+│   ├── validator.py
+│   └── constraints.py
+│
+├── data/
+│   └── mydb.json
+│
+├── main.py
+└── README.md
+```
+
+---
+
+## Supported Commands
+
+### Create a table
+
+```text
+CREATE students id:int:pk name:str:notnull age:int marks:float email:str:unique
+```
+
+### Insert a row
+
+```text
+INSERT students id=1 name=Vansh age=21 marks=95 email=vansh@gmail.com
+```
+
+### Select all rows
+
+```text
+SELECT students
+```
+
+### Select with condition
+
+```text
+SELECT students WHERE marks > 80
+```
+
+### Update records
+
+```text
+UPDATE students marks=98 WHERE id == 1
+```
+
+### Delete records
+
+```text
+DELETE students WHERE marks < 40
+```
+
+### Count records
+
+```text
+COUNT students
+```
+
+---
+
+## Technologies Used
 
 - Python
 - JSON
-- Object-Oriented Programming (OOP)
-- Git & GitHub
+- Object-Oriented Programming
+- Modular Software Design
 
-## Current Project Structure
+---
 
-```
-AI-Database-Assistant/
-│
-├── database.py
-├── main.py
-├── README.md
-└── .gitignore
-```
+## Future Improvements
 
-## Current Status
+- SQL-like parser
+- AI-powered natural language queries
+- Web interface
+- CSV import/export
+- Aggregate functions
+- Multiple condition queries
+- Transactions
 
-- CLI Database Engine
-- CRUD Operations
-- JSON Storage
-- Dictionary-based Records
-- Schema Validation (In Progress)
-- Natural Language Interface
-- AI Agent
-- FastAPI Backend
-- React Frontend
-
-## Vision
-
-The goal of this project is to build a lightweight database engine that can be controlled using natural language instead of SQL queries.
-
-Example:
-
-```
-Create a table called students with id, name and marks.
-```
-
-```
-Show students who scored more than 80 marks.
-```
-
-```
-Increase Rahul's marks by 5.
-```
-
-The AI interprets the user's request and executes the appropriate database operation.
+---
 
 ## Author
 
