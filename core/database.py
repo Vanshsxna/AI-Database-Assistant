@@ -4,6 +4,7 @@ from .constraints import Constraints
 from .validator import Validator
 from copy import deepcopy
 
+
 class Database:
     def __init__(self, filename="data/mydb.json"):
         self.filename = filename

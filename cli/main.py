@@ -4,8 +4,7 @@ from ai.interpreter import (
     UnsupportedRequestError,
     InterpreterError,
 )
-from ai.executor import Executor, UnsupportedActionError
-
+from core.executor import Executor, UnsupportedActionError
 
 
 def main():
@@ -15,10 +14,7 @@ def main():
     interpreter = Interpreter()
 
     executor = Executor(db)
-
-    print("=" * 60)
-    print("      AI Database Assistant")
-    print("=" * 60)
+    print("AI Database Assistant")
     print("Type your request in natural language.")
     print("Type EXIT to quit.\n")
 
