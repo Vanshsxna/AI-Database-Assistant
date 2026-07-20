@@ -1,6 +1,6 @@
-# Mini Database Engine
+# AI Database Assistant
 
-A modular JSON-based database engine built entirely in Python without using any external database libraries.
+An evolution of my Mini Database Engine featuring a modular JSON database with an AI-powered natural language interface powered by OpenAI GPT models.
 
 This project implements a lightweight database system with support for table creation, CRUD operations, schema validation, constraints, and persistent JSON storage.
 

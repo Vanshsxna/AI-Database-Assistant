@@ -1,17 +1,21 @@
 # Python cache
 __pycache__/
 *.py[cod]
+*.pyo
 
 # Virtual environments
 venv/
 .venv/
 env/
 
-# VS Code settings
+# Environment variables
+.env
+
+# VS Code
 .vscode/
 
 # Generated database
-mydb.json
+data/mydb.json
 
 # OS files
 .DS_Store
